@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
       if (!b.email || !b.password || String(b.password).length < 6) return json({ error: 'بيانات ناقصة' }, 400)
       const { data, error } = await admin.auth.admin.createUser({
         email: b.email, password: b.password, email_confirm: true,
-        user_metadata: { name: b.name, grade: b.grade, grp: b.grp },
+        user_metadata: { name: b.name, grade: b.grade, grp: b.grp, phone: b.phone, parent_phone: b.parent_phone },
       })
       if (error) return json({ error: error.message }, 400)
       return json({ id: data.user?.id })
