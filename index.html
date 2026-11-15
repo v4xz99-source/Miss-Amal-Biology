@@ -255,7 +255,7 @@ function closeIntro(){if(introClosed)return;introClosed=true;if(window._i3d)wind
 async function emailFor(name){
   const norm=name.normalize('NFC').trim().toLowerCase();
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(norm));
-  return 's_'+[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32)+'@missamal.app';
+  return 's'+[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,24)+'@gmail.com';
 }
 function authView(err=''){
   const reg=authTab==='reg';
