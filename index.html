@@ -215,6 +215,8 @@ function normPhone(v){
   return t}
 const okPhone=t=>/^01[0125]\d{8}$/.test(t);
 function errMsg(e){const m=(e&&e.message)||String(e);
+  if(/rate limit|too many|429/i.test(m))return 'تم تجاوز حد إرسال الإيميلات في Supabase. اقفل Confirm email (Authentication ← Sign In / Providers ← Email) وحاول تاني';
+  if(/not confirmed/i.test(m))return 'الحساب لسه مش مفعّل: اقفل Confirm email من إعدادات Supabase';
   if(/duplicate|23505|already/i.test(m))return 'الاسم ده مستخدم قبل كده';
   if(/Invalid login/i.test(m))return 'الاسم أو الباسورد غلط';
   if(/Failed to fetch|network/i.test(m))return 'مشكلة في الاتصال بالإنترنت';
@@ -283,7 +285,8 @@ async function doReg(){
   if(p.length<6)return busy(false,'الباسورد لازم 6 حروف أو أرقام على الأقل');
   busy(true);
   try{
-    const {data:ex}=await sb.rpc('login_email',{p_name:n});
+    const {data:ex,error:e0}=await sb.rpc('login_email',{p_name:n});
+    if(e0)return busy(false,'قاعدة البيانات مش جاهزة، شغّل ملف SQL في Supabase ('+errMsg(e0)+')');
     if(ex)return busy(false,'الاسم ده مستخدم قبل كده');
     const email=await emailFor(n);
     const {data,error}=await sb.auth.signUp({email,password:p,options:{data:{name:n,grade:g,grp:gp,phone:ph,parent_phone:pp}}});
@@ -297,10 +300,11 @@ async function doLogin(){
   if(!n||!p)return busy(false,'اكتب الاسم والباسورد');
   busy(true);
   try{
-    const {data:email}=await sb.rpc('login_email',{p_name:n});
-    if(!email)return busy(false,'الاسم أو الباسورد غلط');
+    const {data:email,error:e0}=await sb.rpc('login_email',{p_name:n});
+    if(e0)return busy(false,'قاعدة البيانات مش جاهزة، شغّل ملف SQL في Supabase ('+errMsg(e0)+')');
+    if(!email)return busy(false,'الاسم ده مش مسجل. لو انت الأدمن راجع خطوة 4 في SETUP.md');
     const {error}=await sb.auth.signInWithPassword({email,password:p});
-    if(error)return busy(false,'الاسم أو الباسورد غلط');
+    if(error)return busy(false,/not confirmed|rate/i.test(error.message)?errMsg(error):'الباسورد غلط');
     await boot();
   }catch(e){busy(false,errMsg(e))}
 }
