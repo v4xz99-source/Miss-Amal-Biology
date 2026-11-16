@@ -187,6 +187,7 @@ const GR={1:'أولى ثانوي',2:'تانية ثانوي',3:'تالتة ثان
 const GP={sat:'مجموعة السبت',tue:'مجموعة التلات',thu:'مجموعة الخميس'};
 const AVS=['🧬','🔬','🧪','🦋','🌿','🧫','🐬','🦉','🌸','🧠','🫀','🦠'];
 const BNS=['b1','b2','b3','b4'];
+const GRO={3:'تالتة ثانوي'};               // المراحل المتاحة للاختيار (تالتة ثانوي فقط)
 const GRA={all:'كل المراحل',...GR},GPA={all:'كل المجموعات',...GP};   // خيارات المحتوى (فيها "الكل")
 const forMe=(v,u)=>(v.grade==='all'||v.grade===u.grade)&&(v.group==='all'||v.group===u.group);
 const MAX_FILE=50*1024*1024; // حد الخطة المجانية في Supabase
@@ -274,7 +275,7 @@ function authView(err=''){
   <div class="err" id="autherr">${err}</div>
   <label>الاسم</label><input id="fn" placeholder="اكتب اسمك">
   <label>الباسورد</label><input id="fp" type="password" placeholder="الباسورد ${reg?'(6 على الأقل)':''}">
-  ${reg?`<label>المرحلة</label><select id="fg"><option value="">اختار المرحلة</option>${Object.entries(GR).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+  ${reg?`<label>المرحلة</label><select id="fg">${Object.entries(GRO).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
   <label>المجموعة</label><select id="fgp"><option value="">اختار المجموعة</option>${Object.entries(GP).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
   <label>رقمك (واتساب)</label><input id="fph" type="tel" inputmode="numeric" dir="ltr" placeholder="01xxxxxxxxx">
   <label>رقم ولي الأمر</label><input id="fpp" type="tel" inputmode="numeric" dir="ltr" placeholder="01xxxxxxxxx">`:''}
@@ -565,7 +566,7 @@ function dashView(){
   <div class="stats">${stat(users.length,'إجمالي الطلاب')}${stat(videos.length,'عدد الفيديوهات')}${stat(users.filter(u=>days7(u.id)>0).length,'نشطين آخر 7 أيام')}${stat(c(u=>u.blocked),'حسابات موقوفة')}</div>
   <div class="card scroll"><h4 style="margin-bottom:8px;color:var(--mut)">عدد الطلاب في كل مرحلة ومجموعة</h4><table>
     <tr><th></th>${Object.values(GP).map(v=>`<th>${v}</th>`).join('')}<th>الإجمالي</th></tr>
-    ${Object.entries(GR).map(([g,gl])=>`<tr><td><b>${gl}</b></td>${Object.keys(GP).map(p=>`<td>${c(u=>u.grade===g&&u.group===p)}</td>`).join('')}<td><b>${c(u=>u.grade===g)}</b></td></tr>`).join('')}
+    ${Object.entries(GRO).map(([g,gl])=>`<tr><td><b>${gl}</b></td>${Object.keys(GP).map(p=>`<td>${c(u=>u.grade===g&&u.group===p)}</td>`).join('')}<td><b>${c(u=>u.grade===g)}</b></td></tr>`).join('')}
     <tr><td><b>الإجمالي</b></td>${Object.keys(GP).map(p=>`<td><b>${c(u=>u.group===p)}</b></td>`).join('')}<td><b>${users.length}</b></td></tr>
   </table></div>
   <div class="card"><h4 style="margin-bottom:8px;color:var(--mut)">آخر المسجلين</h4>
@@ -577,7 +578,6 @@ function dashView(){
 function studentsView(){
   return `<h3 style="margin-bottom:12px">👥 التحكم في الطلاب</h3>
   <div class="card"><div class="row"><input id="sq" placeholder="🔍 ابحث بالاسم أو الرقم" value="${esc(q)}" oninput="q=this.value;stTable()">
-  <select onchange="fGrade=this.value;stTable()">${opts(GR,fGrade,'كل المراحل')}</select>
   <select onchange="fGroup=this.value;stTable()">${opts(GP,fGroup,'كل المجموعات')}</select></div>
   <div class="row"><button class="btn sm" onclick="studentForm()">➕ إضافة طالب</button><button class="btn ghost sm" onclick="exportCSV()">⬇️ تصدير Excel/CSV</button></div></div>
   <div class="card scroll" id="stbl">${stTableHTML()}</div>`;
@@ -604,7 +604,7 @@ function studentForm(id){
   ${u?'':'<label>الباسورد (6 على الأقل)</label><input id="mp" type="text">'}
   <label>رقم الطالب</label><input id="mph" type="tel" inputmode="numeric" dir="ltr" placeholder="01xxxxxxxxx" value="${u?esc(u.phone):''}">
   <label>رقم ولي الأمر</label><input id="mpp" type="tel" inputmode="numeric" dir="ltr" placeholder="01xxxxxxxxx" value="${u?esc(u.parentPhone):''}">
-  <label>المرحلة</label><select id="mg">${opts(GR,u?u.grade:'1')}</select>
+  <label>المرحلة</label><select id="mg">${opts(GRO,'3')}</select>
   <label>المجموعة</label><select id="mgp">${opts(GP,u?u.group:'sat')}</select>
   <div class="row"><button class="btn" id="msave" onclick="saveStudent('${id||''}')">حفظ</button><button class="btn ghost" onclick="closeModal()">إلغاء</button></div>`);
 }
@@ -660,7 +660,7 @@ function videosView(){
   <label>📱 أو اختار ملف من معرض الموبايل (فيديو / صورة / PDF / ملف تاني)</label>
   <input id="vf" type="file" accept="video/*,image/*,application/pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx">
   <div style="font-size:12px;color:var(--mut);margin:-6px 0 10px">لو اخترت ملف، هيتم استخدامه بدل الرابط. الحد الأقصى 50MB للملف (للفيديوهات الأكبر استخدم رابط يوتيوب Unlisted).</div>
-  <label>المرحلة</label><select id="vg">${opts(GRA,'all')}</select>
+  <label>المرحلة</label><select id="vg">${opts(GRO,'3')}</select>
   <label>المجموعة</label><select id="vgp">${opts(GPA,'all')}</select>
   <div id="upmsg2" style="color:var(--ac);font-size:13px;margin-bottom:8px"></div>
   <button class="btn" id="addbtn" onclick="addVideo()">➕ إضافة</button></div>
@@ -697,7 +697,7 @@ function editVideo(id){
   const v=videos.find(x=>x.id===id);
   showModal(`<h3 style="margin-bottom:12px">تعديل</h3><label>العنوان</label><input id="et" value="${esc(v.title)}">
   ${v.kind==='file'?`<div style="color:var(--mut);font-size:13px;margin-bottom:12px">📁 ${esc(v.fname||'ملف')} (لتغيير الملف احذفه وأضفه من جديد)</div>`:`<label>الرابط</label><input id="eu" dir="ltr" value="${esc(v.url||'')}">`}
-  <label>المرحلة</label><select id="eg">${opts(GRA,v.grade)}</select><label>المجموعة</label><select id="egp">${opts(GPA,v.group)}</select>
+  <label>المرحلة</label><select id="eg">${opts(GRO,'3')}</select><label>المجموعة</label><select id="egp">${opts(GPA,v.group)}</select>
   <div class="row"><button class="btn" onclick="saveVideo('${id}')">حفظ</button><button class="btn ghost" onclick="closeModal()">إلغاء</button></div>`);
 }
 async function saveVideo(id){
@@ -738,7 +738,6 @@ function trackView(){
   return `<h3 style="margin-bottom:12px">📈 متابعة حالات الطلاب</h3>
   <div class="stats">${stat(today,'دخلوا النهارده')}${stat(inactive,'غايبين +3 أيام')}${stat(avg+'%','متوسط إنجاز الفيديوهات')}</div>
   <div class="card"><div class="row"><input placeholder="🔍 ابحث بالاسم" value="${esc(trQ)}" oninput="trQ=this.value;trTable()">
-  <select onchange="trR=this.value;trTable()">${opts(GR,trR,'كل المراحل')}</select>
   <select onchange="trG=this.value;trTable()">${opts(GP,trG,'كل المجموعات')}</select>
   <select onchange="tf=this.value;trTable()"><option value="all" ${tf==='all'?'selected':''}>كل الحالات</option><option value="inactive" ${tf==='inactive'?'selected':''}>غايبين +3 أيام</option><option value="nowatch" ${tf==='nowatch'?'selected':''}>ما شافوش أي فيديو</option><option value="finished" ${tf==='finished'?'selected':''}>خلّصوا كل الفيديوهات</option></select></div></div>
   <div class="card scroll" id="trtbl">${trTableHTML()}</div>`;
