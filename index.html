@@ -2,7 +2,15 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04120e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Miss Amal">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Miss Amal Biology</title>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -146,7 +154,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .mini.big{width:54px;height:54px;font-size:28px;box-shadow:0 8px 18px -6px #000,0 0 0 2px rgba(240,207,122,.55),0 0 20px rgba(240,207,122,.25)}
 .bar{height:9px;background:rgba(2,14,11,.7);border-radius:99px;overflow:hidden;margin-top:6px;box-shadow:inset 0 2px 4px rgba(0,0,0,.6)}
 .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--ac),var(--ac2),var(--gold));box-shadow:0 0 12px rgba(52,211,153,.6)}
-.st-done{background:rgba(20,83,45,.7);color:#86efac}.st-part{background:rgba(113,63,18,.7);color:#fde68a}.st-none{background:rgba(42,58,53,.7);color:var(--mut)}
+.st-done{background:rgba(20,83,45,.7);color:#86efac}.st-part{background:rgba(113,63,18,.7);color:#fde68a}.st-new{background:rgba(224,181,82,.2);color:#f6e3a6;border-color:rgba(224,181,82,.4)}
+.st-none{background:rgba(42,58,53,.7);color:var(--mut)}
 .filebox{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;font-size:13px;color:var(--tx);background:radial-gradient(circle at 50% 30%,#14473a,#06150f)}
 .dcols{display:flex;gap:6px;align-items:flex-end;height:90px;margin-bottom:6px}.dcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px}.dbar{width:70%;border-radius:6px 6px 0 0;box-shadow:0 0 12px rgba(52,211,153,.4)}.dcol small{font-size:10px;color:var(--mut)}
 .vid img{display:block}
@@ -157,6 +166,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .lite *{animation:none!important;transition:none!important}
 .lite .box,.lite .card,.lite .vid,.lite .stat,.lite .tcard,.lite .mbox,.lite .side,.lite .mback{backdrop-filter:none;-webkit-backdrop-filter:none}
 @media(prefers-reduced-motion:reduce){#bg3d{display:none}*{animation:none!important}}
+.pwa{display:flex;align-items:center;gap:14px;padding:14px 16px;border-color:rgba(240,207,122,.35)}
+.pwa-i{font-size:30px;filter:drop-shadow(0 4px 6px #000a)}.pwa-s{font-size:12.5px;color:var(--mut);margin-top:3px;line-height:1.6}
 </style>
 </head>
 <body>
@@ -190,6 +201,7 @@ const BNS=['b1','b2','b3','b4'];
 const GRO={3:'تالتة ثانوي'};               // المراحل المتاحة للاختيار (تالتة ثانوي فقط)
 const GRA={all:'كل المراحل',...GR},GPA={all:'كل المجموعات',...GP};   // خيارات المحتوى (فيها "الكل")
 const forMe=(v,u)=>(v.grade==='all'||v.grade===u.grade)&&(v.group==='all'||v.group===u.group);
+const VAPID_PUBLIC='BEDPl-pOeQyLsFcSjOw558Rqy4pqtoVVoIZKXdhrN5gpTt9nls1V-CjpH9SAV6anPlDDXGAnPBGEy9wNutwe7MY';   // مفتاح الإشعارات العام (آمن للنشر)
 const MAX_FILE=50*1024*1024; // حد الخطة المجانية في Supabase
 
 /* وضع خفيف للأجهزة الضعيفة */
@@ -210,7 +222,7 @@ const mapU=r=>({id:r.id,name:r.name,grade:r.grade,group:r.grp,blocked:r.blocked,
   avatar:r.avatar||'🧬',avatarImg:r.avatar_url||'',banner:{t:r.banner_type||'preset',v:r.banner_val||'b1'},
   created:new Date(r.created_at).toLocaleString('ar-EG'),opens:r.opens||0,activeSec:r.active_sec||0,
   lastSeen:r.last_seen?new Date(r.last_seen).getTime():0});
-const mapV=r=>({id:r.id,title:r.title,kind:r.kind,url:r.url,fileKey:r.file_path,mime:r.mime,fname:r.fname,size:r.size,grade:r.grade,group:r.grp});
+const mapV=r=>({id:r.id,title:r.title,kind:r.kind,url:r.url,fileKey:r.file_path,mime:r.mime,fname:r.fname,size:r.size,grade:r.grade,group:r.grp,created:r.created_at?new Date(r.created_at).getTime():0});
 const mapP=r=>({sec:r.sec||0,done:!!r.done,manual:!!r.manual,first:r.first_at?new Date(r.first_at).getTime():0,last:r.last_at?new Date(r.last_at).getTime():0});
 async function fetchAll(build){let out=[],from=0;for(;;){const {data,error}=await build().range(from,from+999);if(error||!data)break;out=out.concat(data);if(data.length<1000)break;from+=1000}return out}
 function normPhone(v){
@@ -319,9 +331,85 @@ async function doLogin(){
 }
 async function logout(){
   try{await flushProg()}catch(e){}
-  stopTimers();await sb.auth.signOut();
+  stopTimers();if(me&&!me.admin)await dropPushForLogout();await sb.auth.signOut();
   me=null;prof=null;users=[];videos=[];prog={};act={};render();
 }
+
+
+/* ---------- تثبيت التطبيق + الإشعارات ---------- */
+let deferredPrompt=null,pushState='unknown'; // unknown | unsupported | needInstall | off | denied | on
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+let swReg=null;
+function registerSW(){
+  if(!('serviceWorker' in navigator)||location.protocol==='file:')return;
+  navigator.serviceWorker.register('sw.js').then(r=>{swReg=r;checkPush()}).catch(e=>console.warn('SW failed',e));
+}
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;refreshPwa()});
+addEventListener('appinstalled',()=>{deferredPrompt=null;refreshPwa()});
+function b64ToU8(b){const p='='.repeat((4-b.length%4)%4),r=atob((b+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...r].map(c=>c.charCodeAt(0)))}
+async function checkPush(){
+  if(!me||me.admin){pushState='unknown';return refreshPwa()}
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){
+    pushState=(isIOS&&!isStandalone())?'needInstall':'unsupported';return refreshPwa()}
+  if(Notification.permission==='denied'){pushState='denied';return refreshPwa()}
+  try{
+    const reg=swReg||await navigator.serviceWorker.getRegistration();
+    const sub=reg&&await reg.pushManager.getSubscription();
+    if(sub&&Notification.permission==='granted'){pushState='on';sb.rpc('save_push',{p_endpoint:sub.endpoint,p_p256dh:btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),p_auth:btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}).then(()=>{},()=>{})}
+    else pushState='off';
+  }catch(e){pushState='off'}
+  refreshPwa();
+}
+async function enablePush(){
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){pushState=perm==='denied'?'denied':'off';return refreshPwa()}
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(VAPID_PUBLIC)});
+    const j=sub.toJSON();
+    const {error}=await sb.rpc('save_push',{p_endpoint:j.endpoint,p_p256dh:j.keys.p256dh,p_auth:j.keys.auth});
+    if(error)throw error;
+    pushState='on';refreshPwa();
+  }catch(e){alert('تعذر تفعيل الإشعارات: '+errMsg(e));checkPush()}
+}
+async function disablePush(){
+  try{
+    const reg=swReg||await navigator.serviceWorker.getRegistration();
+    const sub=reg&&await reg.pushManager.getSubscription();
+    if(sub){await sb.rpc('remove_push',{p_endpoint:sub.endpoint});await sub.unsubscribe()}
+  }catch(e){}
+  pushState='off';refreshPwa();
+}
+async function dropPushForLogout(){      // الإشعارات متروحش لحساب تاني على نفس الجهاز
+  try{const reg=await navigator.serviceWorker.getRegistration();const sub=reg&&await reg.pushManager.getSubscription();
+    if(sub)await sb.rpc('remove_push',{p_endpoint:sub.endpoint})}catch(e){}
+}
+async function doInstall(){
+  if(!deferredPrompt)return;deferredPrompt.prompt();
+  try{await deferredPrompt.userChoice}catch(e){}deferredPrompt=null;refreshPwa();
+}
+function pwaInner(){
+  let h='';
+  if(!isStandalone()){
+    if(deferredPrompt)h+=`<div class="card pwa"><div class="pwa-i">📲</div><div style="flex:1"><b>ثبّت التطبيق على موبايلك</b><div class="pwa-s">يفتح زي أي تطبيق من الشاشة الرئيسية</div></div><button class="btn sm" onclick="doInstall()">تثبيت</button></div>`;
+    else if(isIOS)h+=`<div class="card pwa"><div class="pwa-i">📲</div><div style="flex:1"><b>لتثبيت التطبيق على iPhone</b><div class="pwa-s">اضغط زرار المشاركة <b>⬆️</b> في Safari ← <b>Add to Home Screen</b> (إضافة إلى الشاشة الرئيسية)</div></div></div>`;
+  }
+  if(me&&!me.admin){
+    if(pushState==='off')h+=`<div class="card pwa"><div class="pwa-i">🔔</div><div style="flex:1"><b>فعّل الإشعارات</b><div class="pwa-s">هيوصلك إشعار أول ما ينزل فيديو جديد لمجموعتك</div></div><button class="btn sm" onclick="enablePush()">تفعيل</button></div>`;
+    else if(pushState==='needInstall')h+=`<div class="card pwa"><div class="pwa-i">🔔</div><div style="flex:1"><b>الإشعارات على iPhone</b><div class="pwa-s">لازم تثبّت التطبيق الأول (Add to Home Screen) وتفتحه من الأيقونة، وبعدها هتقدر تفعّل الإشعارات.</div></div></div>`;
+    else if(pushState==='denied')h+=`<div class="card pwa"><div class="pwa-i">🔕</div><div style="flex:1"><b>الإشعارات مقفولة</b><div class="pwa-s">افتح إعدادات المتصفح ← إعدادات الموقع ← الإشعارات، واختار "السماح"، وبعدين حدّث الصفحة.</div></div></div>`;
+  }
+  return h;
+}
+function pushRow(){   // سطر في صفحة البروفايل
+  if(!me||me.admin)return '';
+  if(pushState==='on')return `<div class="card"><h3 style="margin-bottom:8px">🔔 الإشعارات</h3><div style="color:var(--mut);font-size:14px;margin-bottom:10px">الإشعارات مفعّلة ✅ هيوصلك تنبيه لما ينزل فيديو جديد.</div><button class="btn ghost sm" onclick="disablePush()">إيقاف الإشعارات</button></div>`;
+  if(pushState==='off')return `<div class="card"><h3 style="margin-bottom:8px">🔔 الإشعارات</h3><div style="color:var(--mut);font-size:14px;margin-bottom:10px">فعّلها عشان يوصلك تنبيه لما ينزل فيديو جديد.</div><button class="btn sm" onclick="enablePush()">تفعيل الإشعارات</button></div>`;
+  return '';
+}
+function refreshPwa(){const el=$('pwaSlot');if(el)el.innerHTML=pwaInner();const r=$('pushRow');if(r)r.innerHTML=pushRow()}
 
 /* ---------- boot ---------- */
 let timers=[];
@@ -342,7 +430,7 @@ async function boot(){
     prof=mapU(p);me={id:p.id,admin:p.role==='admin'};
     await loadTeacher();
     if(me.admin){adminTab='dash';await Promise.all([loadContent(),loadAdminData()])}
-    else{view='home';await Promise.all([loadContent(),loadMyProgress()]);sb.rpc('start_session').then(()=>{},()=>{});startTimers()}
+    else{view='home';await Promise.all([loadContent(),loadMyProgress()]);sb.rpc('start_session').then(()=>{},()=>{});startTimers();checkPush()}
   }catch(e){authMsg=errMsg(e)}
   ready=true;render();
 }
@@ -411,7 +499,7 @@ function progSummary(u,list){const d=list.filter(v=>stOf(u.id,v.id)==='done').le
 function vidCards(list,track){
   if(!list.length)return '<div class="empty">لسه مفيش محتوى هنا 📭</div>';
   return `<div class="grid">${list.map(v=>{const st=track&&me&&!me.admin?stOf(me.id,v.id):null;
-    return `<div class="vid"><div class="v">${media(v,track)}</div><div class="t">${esc(v.title)}<div><span class="tag">${GRA[v.grade]}</span><span class="tag">${GPA[v.group]}</span>${st?`<span class="tag st-${st}" id="st_${v.id}">${ST[st]}</span>`:''}</div>
+    return `<div class="vid"><div class="v">${media(v,track)}</div><div class="t">${esc(v.title)}<div><span class="tag">${GRA[v.grade]}</span><span class="tag">${GPA[v.group]}</span>${v.created&&Date.now()-v.created<3*864e5?'<span class="tag st-new">🆕 جديد</span>':''}${st?`<span class="tag st-${st}" id="st_${v.id}">${ST[st]}</span>`:''}</div>
     ${st&&st!=='done'?`<button class="btn ghost sm" style="margin-top:8px" onclick="markDone('${v.id}',true);render()">✔️ خلّصت المشاهدة</button>`:''}</div></div>`}).join('')}</div>`;
 }
 function trackVideo(el){
@@ -473,7 +561,7 @@ function studentShell(u){
     <h4>مرحلتي</h4><a class="on">${GR[u.grade]}</a>
     <h4>مجموعتي</h4><a class="on">${GP[u.group]}</a>
     <h4>&nbsp;</h4><a onclick="logout()" style="color:var(--danger)">🚪 تسجيل خروج</a>
-  </div><div class="main"><button class="menuBtn" onclick="menuOpen=!menuOpen;render()">☰ القائمة</button>${teacherCard()}${body}</div></div>`;
+  </div><div class="main"><button class="menuBtn" onclick="menuOpen=!menuOpen;render()">☰ القائمة</button>${teacherCard()}<div id="pwaSlot">${pwaInner()}</div>${body}</div></div>`;
 }
 function teacherCard(){
   const av=admin.avatarImg?`<img src="${esc(admin.avatarImg)}">`:admin.avatar;
@@ -484,7 +572,7 @@ function profileHead(u){
   return `<div class="banner ${bannerCls(u.banner)}" ${bannerStyle(u.banner)}>${bv}<div class="avatar">${avatarHTML(u)}</div><div class="pname">${esc(u.name)}<span>${u.grade?GR[u.grade]+' • '+GP[u.group]:'المدرّسة'}</span></div></div>`;
 }
 function profileEditor(u){
-  return `<div class="card"><h3 style="margin-bottom:8px">بياناتي</h3><div style="line-height:2;font-size:14px">📱 رقمي: <span dir="ltr">${esc(u.phone||'—')}</span><br>👨‍👩‍👦 رقم ولي الأمر: <span dir="ltr">${esc(u.parentPhone||'—')}</span><br><small style="color:var(--mut)">لتعديل الأرقام كلّم المدرسة.</small></div></div>
+  return `<div id="pushRow">${pushRow()}</div><div class="card"><h3 style="margin-bottom:8px">بياناتي</h3><div style="line-height:2;font-size:14px">📱 رقمي: <span dir="ltr">${esc(u.phone||'—')}</span><br>👨‍👩‍👦 رقم ولي الأمر: <span dir="ltr">${esc(u.parentPhone||'—')}</span><br><small style="color:var(--mut)">لتعديل الأرقام كلّم المدرسة.</small></div></div>
   <div class="card"><h3 style="margin-bottom:12px">الصورة الشخصية</h3>
   <label>📷 اختار صورة من معرض الموبايل (أو صوّر صورة جديدة)</label><input type="file" accept="image/*" onchange="upImg(this,'avatar')">
   <label>أو اختار Avatar</label><div class="avs">${AVS.map(a=>`<span class="${!u.avatarImg&&u.avatar===a?'on':''}" onclick="setAvatar('${a}')">${a}</span>`).join('')}</div>
@@ -554,7 +642,7 @@ function adminShell(){
     ${nav('dash','📊 لوحة التحكم')}${nav('students','👥 الطلاب')}${nav('track','📈 متابعة الطلاب')}${nav('videos','🎬 الفيديوهات والملفات')}${nav('profile','⚙️ حسابي وكلمة المرور')}
     <a onclick="goA(adminTab)">🔄 تحديث البيانات</a>
     <h4>&nbsp;</h4><a onclick="logout()" style="color:var(--danger)">🚪 تسجيل خروج</a>
-  </div><div class="main"><button class="menuBtn" onclick="menuOpen=!menuOpen;render()">☰ القائمة</button>${body}</div></div>`;
+  </div><div class="main"><button class="menuBtn" onclick="menuOpen=!menuOpen;render()">☰ القائمة</button><div id="pwaSlot">${pwaInner()}</div>${body}</div></div>`;
 }
 
 /* --- dashboard --- */
@@ -662,6 +750,7 @@ function videosView(){
   <div style="font-size:12px;color:var(--mut);margin:-6px 0 10px">لو اخترت ملف، هيتم استخدامه بدل الرابط. الحد الأقصى 50MB للملف (للفيديوهات الأكبر استخدم رابط يوتيوب Unlisted).</div>
   <label>المرحلة</label><select id="vg">${opts(GRO,'3')}</select>
   <label>المجموعة</label><select id="vgp">${opts(GPA,'all')}</select>
+  <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:12px;color:var(--tx);font-size:14px"><input type="checkbox" id="vnotify" checked style="width:20px;height:20px;margin:0;accent-color:#e6bb58"> 🔔 ابعت إشعار للطلاب بالمحتوى الجديد</label>
   <div id="upmsg2" style="color:var(--ac);font-size:13px;margin-bottom:8px"></div>
   <button class="btn" id="addbtn" onclick="addVideo()">➕ إضافة</button></div>
   ${videos.length?`<div class="grid">${videos.map(v=>{
@@ -686,8 +775,14 @@ async function addVideo(){
       const {error}=await sb.storage.from('content').upload(path,f,{contentType:f.type||'application/octet-stream'});if(error)throw error;
       Object.assign(row,{kind:'file',file_path:path,mime:f.type||'application/octet-stream',fname:f.name,size:f.size});
     }else Object.assign(row,{kind:'link',url:u});
-    const {error}=await sb.from('content').insert(row);if(error)throw error;
+    const wantNotify=$('vnotify')&&$('vnotify').checked;
+    const {data:ins,error}=await sb.from('content').insert(row).select('id').single();if(error)throw error;
     await Promise.all([loadContent(),loadAdminData()]);render();
+    if(wantNotify&&ins){
+      try{const r=await callAdmin({action:'notify',id:ins.id});
+        alert(r.devices?`تم الرفع ✅\nوصل الإشعار لـ ${r.sent} جهاز${r.failed?' (فشل '+r.failed+')':''}\n(${r.students} طالب في المجموعة، ${r.devices} جهاز مفعّل الإشعارات)`:`تم الرفع ✅\nمفيش طالب مفعّل الإشعارات لسه من ${r.students} طالب في المجموعة.`)}
+      catch(e){alert('تم الرفع ✅ لكن الإشعار ما اتبعتش: '+errMsg(e))}
+    }
   }catch(e){
     if(path)sb.storage.from('content').remove([path]);
     btn.disabled=false;$('upmsg2').textContent='';alert('حصلت مشكلة: '+errMsg(e));
@@ -889,6 +984,7 @@ async function initIntro3D(){
 }
 
 buildBg();initIntro3D();
+registerSW();
 
 if(CONFIGURED){
   sb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT'&&me){me=null;prof=null;stopTimers();render()}});
