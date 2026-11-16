@@ -186,6 +186,8 @@ const GR={1:'أولى ثانوي',2:'تانية ثانوي',3:'تالتة ثان
 const GP={sat:'مجموعة السبت',tue:'مجموعة التلات',thu:'مجموعة الخميس'};
 const AVS=['🧬','🔬','🧪','🦋','🌿','🧫','🐬','🦉','🌸','🧠','🫀','🦠'];
 const BNS=['b1','b2','b3','b4'];
+const GRA={all:'كل المراحل',...GR},GPA={all:'كل المجموعات',...GP};   // خيارات المحتوى (فيها "الكل")
+const forMe=(v,u)=>(v.grade==='all'||v.grade===u.grade)&&(v.group==='all'||v.group===u.group);
 const MAX_FILE=50*1024*1024; // حد الخطة المجانية في Supabase
 
 /* وضع خفيف للأجهزة الضعيفة */
@@ -402,7 +404,7 @@ function progSummary(u,list){const d=list.filter(v=>stOf(u.id,v.id)==='done').le
 function vidCards(list,track){
   if(!list.length)return '<div class="empty">لسه مفيش محتوى هنا 📭</div>';
   return `<div class="grid">${list.map(v=>{const st=track&&me&&!me.admin?stOf(me.id,v.id):null;
-    return `<div class="vid"><div class="v">${media(v,track)}</div><div class="t">${esc(v.title)}<div><span class="tag">${GR[v.grade]}</span><span class="tag">${GP[v.group]}</span>${st?`<span class="tag st-${st}" id="st_${v.id}">${ST[st]}</span>`:''}</div>
+    return `<div class="vid"><div class="v">${media(v,track)}</div><div class="t">${esc(v.title)}<div><span class="tag">${GRA[v.grade]}</span><span class="tag">${GPA[v.group]}</span>${st?`<span class="tag st-${st}" id="st_${v.id}">${ST[st]}</span>`:''}</div>
     ${st&&st!=='done'?`<button class="btn ghost sm" style="margin-top:8px" onclick="markDone('${v.id}',true);render()">✔️ خلّصت المشاهدة</button>`:''}</div></div>`}).join('')}</div>`;
 }
 function trackVideo(el){
@@ -450,7 +452,7 @@ function renderInner(){
 
 /* ---------- student ---------- */
 function studentShell(u){
-  const mine=videos.filter(v=>v.grade===u.grade&&v.group===u.group);
+  const mine=videos.filter(v=>forMe(v,u));
   const nav=(k,l)=>`<a class="${view===k?'on':''}" onclick="go('${k}')">${l}</a>`;
   let body='';
   if(view==='home'||view==='videos'){
@@ -652,13 +654,13 @@ function videosView(){
   <label>📱 أو اختار ملف من معرض الموبايل (فيديو / صورة / PDF / ملف تاني)</label>
   <input id="vf" type="file" accept="video/*,image/*,application/pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx">
   <div style="font-size:12px;color:var(--mut);margin:-6px 0 10px">لو اخترت ملف، هيتم استخدامه بدل الرابط. الحد الأقصى 50MB للملف (للفيديوهات الأكبر استخدم رابط يوتيوب Unlisted).</div>
-  <label>المرحلة</label><select id="vg">${opts(GR,'1')}</select>
-  <label>المجموعة</label><select id="vgp">${opts(GP,'sat')}</select>
+  <label>المرحلة</label><select id="vg">${opts(GRA,'all')}</select>
+  <label>المجموعة</label><select id="vgp">${opts(GPA,'all')}</select>
   <div id="upmsg2" style="color:var(--ac);font-size:13px;margin-bottom:8px"></div>
   <button class="btn" id="addbtn" onclick="addVideo()">➕ إضافة</button></div>
   ${videos.length?`<div class="grid">${videos.map(v=>{
-    const grp=users.filter(u=>u.grade===v.grade&&u.group===v.group),d=grp.filter(u=>stOf(u.id,v.id)==='done').length;
-    return `<div class="vid"><div class="v">${media(v,false)}</div><div class="t">${esc(v.title)}<div><span class="tag">${GR[v.grade]}</span><span class="tag">${GP[v.group]}</span><span class="tag">${v.kind==='file'?'📁 ملف':'🔗 رابط'}</span></div>
+    const grp=users.filter(u=>forMe(v,u)),d=grp.filter(u=>stOf(u.id,v.id)==='done').length;
+    return `<div class="vid"><div class="v">${media(v,false)}</div><div class="t">${esc(v.title)}<div><span class="tag">${GRA[v.grade]}</span><span class="tag">${GPA[v.group]}</span><span class="tag">${v.kind==='file'?'📁 ملف':'🔗 رابط'}</span></div>
     <div style="font-size:12px;color:var(--mut);margin-top:6px">👁 شاهده ${d} من ${grp.length} طالب</div>
     <div class="row" style="margin:8px 0 0"><button class="btn ghost sm" onclick="editVideo('${v.id}')">✏️ تعديل</button><button class="btn red sm" onclick="delVideo('${v.id}')">🗑 حذف</button></div></div></div>`}).join('')}</div>`:'<div class="empty">لسه مفيش محتوى</div>'}`;
 }
@@ -689,7 +691,7 @@ function editVideo(id){
   const v=videos.find(x=>x.id===id);
   showModal(`<h3 style="margin-bottom:12px">تعديل</h3><label>العنوان</label><input id="et" value="${esc(v.title)}">
   ${v.kind==='file'?`<div style="color:var(--mut);font-size:13px;margin-bottom:12px">📁 ${esc(v.fname||'ملف')} (لتغيير الملف احذفه وأضفه من جديد)</div>`:`<label>الرابط</label><input id="eu" dir="ltr" value="${esc(v.url||'')}">`}
-  <label>المرحلة</label><select id="eg">${opts(GR,v.grade)}</select><label>المجموعة</label><select id="egp">${opts(GP,v.group)}</select>
+  <label>المرحلة</label><select id="eg">${opts(GRA,v.grade)}</select><label>المجموعة</label><select id="egp">${opts(GPA,v.group)}</select>
   <div class="row"><button class="btn" onclick="saveVideo('${id}')">حفظ</button><button class="btn ghost" onclick="closeModal()">إلغاء</button></div>`);
 }
 async function saveVideo(id){
@@ -709,7 +711,7 @@ async function delVideo(id){
 
 /* --- student tracking --- */
 let trG='all',trR='all',trQ='',tf='all';
-const itemsOf=u=>videos.filter(v=>v.grade===u.grade&&v.group===u.group);
+const itemsOf=u=>videos.filter(v=>forMe(v,u));
 function ago(ts){if(!ts)return 'لم يدخل';const sec=(Date.now()-ts)/1000;if(sec<300)return '🟢 الآن';if(sec<3600)return 'من '+Math.floor(sec/60)+' دقيقة';if(sec<86400)return 'من '+Math.floor(sec/3600)+' ساعة';return 'من '+Math.floor(sec/86400)+' يوم'}
 function fmtDur(sec){sec=Math.round(sec);if(sec<60)return sec+' ث';const m=Math.floor(sec/60);if(m<60)return m+' د';return Math.floor(m/60)+' س '+(m%60)+' د'}
 function days7(id){const a=actOf(id);let n=0;for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()-i);if(a.days[dayKey(d)]!==undefined)n++}return n}
