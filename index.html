@@ -35,6 +35,7 @@ a.pl{text-decoration:none;margin-inline-start:4px;font-size:15px;filter:drop-sha
 #intro.hide{opacity:0;pointer-events:none}
 #i3d{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .logo3d{font-family:'Poppins',sans-serif;font-weight:800;font-size:clamp(34px,11vw,110px);text-align:center;line-height:1.1;color:#fbe9b0;transform-style:preserve-3d;animation:sway 5s ease-in-out infinite alternate;direction:ltr}
+.logo3d{opacity:0;transition:opacity .6s}.logo3d.show{opacity:1}
 .logo3d small{display:block;font-size:.55em;color:#6ee7b7}
 @keyframes sway{from{transform:rotateX(18deg) rotateY(-28deg)}to{transform:rotateX(8deg) rotateY(28deg)}}
 .dna{position:absolute;font-size:30px;opacity:.22;animation:float 7s linear infinite}
@@ -250,9 +251,14 @@ async function refreshSelf(){const {data}=await sb.from('profiles').select('*').
   const d=$('dnas');
   for(let i=0;i<14;i++){const e=document.createElement('div');e.className='dna';e.textContent=['🧬','🔬','🌿','🦠'][i%4];
     e.style.left=Math.random()*100+'%';e.style.animationDelay=(-Math.random()*7)+'s';e.style.animationDuration=(6+Math.random()*6)+'s';d.appendChild(e)}
-  setTimeout(()=>closeIntro(),6000);
+  setTimeout(()=>{if(!introClosed)closeIntro()},14000); // أمان
 })();
-let introClosed=false;
+let introClosed=false,introState='loading',introTimer=0;
+function introResolve(state){
+  if(introState!=='loading')return;introState=state;clearTimeout(introTimer);
+  if(state==='fallback'){const lg=$('logo3d');if(lg)lg.classList.add('show')}
+  setTimeout(()=>{if(!introClosed)closeIntro()},5500);          // المقدمة تفضل 5.5 ثانية بعد ما تظهر
+}
 function closeIntro(){if(introClosed)return;introClosed=true;if(window._i3d)window._i3d.stop();const i=$('intro');i.classList.add('hide');setTimeout(()=>i.remove(),900);render()}
 
 /* ---------- auth ---------- */
@@ -811,15 +817,16 @@ function applyTilt(){
 }
 /* مقدمة Three.js: نص ذهبي مجسم + DNA + جسيمات (لو فشلت بيفضل النص الـ CSS) */
 async function initIntro3D(){
-  if(document.body.classList.contains('lite'))return;
+  if(document.body.classList.contains('lite')){introResolve('fallback');return}
+  introTimer=setTimeout(()=>introResolve('fallback'),5000);   // لو المجسم اتأخر أكتر من 5 ثواني نعرض النص الاحتياطي
   try{
     const THREE=await import('three');
     const {RoomEnvironment}=await import('three/addons/environments/RoomEnvironment.js');
     const {FontLoader}=await import('three/addons/loaders/FontLoader.js');
     const {TextGeometry}=await import('three/addons/geometries/TextGeometry.js');
-    if(introClosed)return;
+    if(introClosed||introState!=='loading')return;
     const font=await new Promise((res,rej)=>new FontLoader().load('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json',res,undefined,rej));
-    if(introClosed)return;
+    if(introClosed||introState!=='loading')return;
     const host=$('intro'),canvas=document.createElement('canvas');canvas.id='i3d';host.insertBefore(canvas,host.firstChild);
     const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
     renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
@@ -875,11 +882,11 @@ async function initIntro3D(){
       helix.rotation.y=t*.45;pts.rotation.y=t*.02;pts.rotation.x=Math.sin(t*.1)*.05;
       cam.position.x=px*.5;cam.position.y=-py*.3;cam.lookAt(0,0,0);
       renderer.render(scene,cam);
-      if(!shown){shown=true;const lg=$('logo3d');if(lg)lg.style.display='none'}
+      if(!shown){shown=true;introResolve('ready')}
     };
     loop();
     window._i3d={stop(){cancelAnimationFrame(raf);removeEventListener('resize',resize);removeEventListener('pointermove',onPtr);removeEventListener('deviceorientation',onGyro);try{renderer.dispose();canvas.remove()}catch(_){}}};
-  }catch(e){console.warn('3D intro unavailable, using CSS fallback',e)}
+  }catch(e){console.warn('3D intro unavailable, using CSS fallback',e);introResolve('fallback')}
 }
 
 buildBg();initIntro3D();
