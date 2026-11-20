@@ -12,6 +12,28 @@ const cors = {
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 
+// يبعت إشعار لمجموعة طلاب (بيحذف الاشتراكات المنتهية تلقائياً)
+async function pushTo(admin: ReturnType<typeof createClient>, ids: string[], payload: string) {
+  const { data: subs } = await admin.from('push_subscriptions').select('*').in('user_id', ids)
+  const list = subs ?? []
+  let sent = 0, failed = 0
+  const dead: string[] = []
+  for (let i = 0; i < list.length; i += 40) {
+    const res = await Promise.allSettled(list.slice(i, i + 40).map((s: { endpoint: string; p256dh: string; auth: string }) =>
+      webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 86400 })))
+    res.forEach((r, j) => {
+      if (r.status === 'fulfilled') sent++
+      else {
+        failed++
+        const code = (r.reason as { statusCode?: number })?.statusCode
+        if (code === 404 || code === 410) dead.push(list[i + j].endpoint)
+      }
+    })
+  }
+  if (dead.length) await admin.from('push_subscriptions').delete().in('endpoint', dead)
+  return { students: ids.length, devices: list.length, sent, failed }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   try {
@@ -96,6 +118,19 @@ Deno.serve(async (req) => {
       }
       if (dead.length) await admin.from('push_subscriptions').delete().in('endpoint', dead)
       return json({ students: ids.length, devices: list.length, sent, failed })
+    }
+
+    // إشعار بملفات جديدة في المكتبة (لكل الطلاب)
+    if (b.action === 'notify_library') {
+      const pub = Deno.env.get('VAPID_PUBLIC_KEY'), priv = Deno.env.get('VAPID_PRIVATE_KEY')
+      if (!pub || !priv) return json({ error: 'مفاتيح الإشعارات (VAPID) مش متضافة في Secrets' }, 400)
+      webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@example.com', pub, priv)
+      const { data: studs } = await admin.from('profiles').select('id').eq('role', 'student').eq('blocked', false)
+      const ids = (studs ?? []).map((s: { id: string }) => s.id)
+      if (!ids.length) return json({ students: 0, devices: 0, sent: 0, failed: 0 })
+      const n = Number(b.count) || 1
+      const body = n > 1 ? `تم رفع ${n} ملفات جديدة في المكتبة 📚` : `تم رفع ملف جديد في المكتبة: ${String(b.title ?? '').slice(0, 80)}`
+      return json(await pushTo(admin, ids, JSON.stringify({ title: 'Miss Amal Biology 🧬', body, tag: 'library' })))
     }
 
     return json({ error: 'unknown action' }, 400)
