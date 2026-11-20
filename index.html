@@ -513,14 +513,15 @@ function vidCards(list,track){
   if(!list.length)return '<div class="empty">لسه مفيش محتوى هنا 📭</div>';
   return `<div class="grid">${list.map(v=>{const st=track&&me&&!me.admin?stOf(me.id,v.id):null;
     return `<div class="vid"><div class="v">${media(v,track)}</div><div class="t">${esc(v.title)}<div><span class="tag">${GRA[v.grade]}</span><span class="tag">${GPA[v.group]}</span>${v.created&&Date.now()-v.created<3*864e5?'<span class="tag st-new">🆕 جديد</span>':''}${st?`<span class="tag st-${st}" id="st_${v.id}">${ST[st]}</span>`:''}</div>
-    ${st&&st!=='done'?`<button class="btn ghost sm" style="margin-top:8px" onclick="markDone('${v.id}',true);render()">✔️ خلّصت المشاهدة</button>`:''}</div></div>`}).join('')}</div>`;
+    </div></div>`}).join('')}</div>`;
 }
 function trackVideo(el){
-  const id=el.dataset.item;let last=0;
+  const id=el.dataset.item;let last=0,w=0;
+  const ok=()=>el.duration&&w>=el.duration*.85;
   el.addEventListener('play',()=>{last=el.currentTime});
   el.addEventListener('seeked',()=>{last=el.currentTime});
-  el.addEventListener('timeupdate',()=>{const t=el.currentTime,d=t-last;if(d>0&&d<1.5&&!el.paused)addSec(id,d);last=t;if(el.duration&&t/el.duration>=.9)markDoneOnce(id)});
-  el.addEventListener('ended',()=>markDoneOnce(id));
+  el.addEventListener('timeupdate',()=>{const t=el.currentTime,d=t-last;if(d>0&&d<1.5&&!el.paused){addSec(id,d);w+=d}last=t;if(ok()&&t/el.duration>=.95)markDoneOnce(id)});
+  el.addEventListener('ended',()=>{if(ok())markDoneOnce(id)});
 }
 function loadYT(cb){
   if(window.YT&&YT.Player)return cb();
@@ -530,10 +531,10 @@ function loadYT(cb){
 }
 function initYT(){
   document.querySelectorAll('iframe[data-yt][data-track]').forEach(fr=>{
-    const id=fr.dataset.item;let timer=null;
+    const id=fr.dataset.item;let timer=null,w=0;
     const pl=new YT.Player(fr.id,{events:{onStateChange:e=>{
-      if(e.data===1){if(!timer){timer=setInterval(()=>{addSec(id,1);try{const d=pl.getDuration();if(d&&pl.getCurrentTime()/d>=.9)markDoneOnce(id)}catch(_){}},1000);ytTimers.push(timer)}}
-      else{clearInterval(timer);timer=null;if(e.data===0)markDoneOnce(id)}}}});
+      if(e.data===1){if(!timer){timer=setInterval(()=>{addSec(id,1);w++;try{const d=pl.getDuration();if(d&&w>=d*.85&&pl.getCurrentTime()/d>=.95)markDoneOnce(id)}catch(_){}},1000);ytTimers.push(timer)}}
+      else{clearInterval(timer);timer=null;if(e.data===0){try{if(w>=pl.getDuration()*.85)markDoneOnce(id)}catch(_){}}}}}});
   });
 }
 function hydrate(){
