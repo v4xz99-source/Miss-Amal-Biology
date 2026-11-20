@@ -95,6 +95,17 @@ h3{color:#f6e3a6;letter-spacing:.2px}
 .main>*{animation:rise .5s cubic-bezier(.2,.8,.2,1) both}
 .main>*:nth-child(2){animation-delay:.05s}.main>*:nth-child(3){animation-delay:.1s}.main>*:nth-child(4){animation-delay:.15s}.main>*:nth-child(5){animation-delay:.2s}
 @keyframes rise{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:none}}
+.libBtn{display:flex;align-items:center;gap:10px;width:100%;margin-bottom:14px;padding:14px 16px;border-radius:16px;border:1px solid rgba(226,180,74,.5);cursor:pointer;color:#2a1c00;font-weight:800;font-size:16px;font-family:inherit;background:linear-gradient(180deg,#f5d98b,#d9a93c);box-shadow:0 4px 0 #8a6a1c,0 10px 24px rgba(0,0,0,.4)}
+.libBtn.on{filter:brightness(1.08);transform:translateY(2px);box-shadow:0 2px 0 #8a6a1c}
+.libBtn small{margin-inline-start:auto;font-weight:600;opacity:.75;font-size:12px}
+.crop-vp{position:relative;margin:0 auto;overflow:hidden;background:#0b1f1a;border-radius:14px;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.crop-vp canvas{display:block;width:100%;height:100%}
+.crop-ov{position:absolute;inset:0;pointer-events:none}
+.crop-ov.round{border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.6);border:2px solid #f5d98b}
+.crop-ov.rect{border:2px solid #f5d98b;border-radius:14px}
+.crop-ctl{display:flex;align-items:center;gap:8px;margin:14px 0 4px}
+.crop-ctl input[type=range]{flex:1;margin:0;accent-color:#e6bb58}
+.crop-ctl .btn{padding:8px 12px;min-width:42px}
 .menuBtn{display:none}
 @media(max-width:760px){
  .layout{flex-direction:column}.side{width:100%;display:none;border:0}.side.open{display:block}
@@ -210,7 +221,7 @@ if((navigator.hardwareConcurrency||8)<=3||(navigator.deviceMemory||8)<=2||matchM
 /* ---------- state ---------- */
 let me=null,prof=null,users=[],videos=[],prog={},act={},ready=false,authMsg='';
 let admin={display:'Miss Amal',avatar:'👩‍🏫',avatarImg:''}; // بيانات المدرسة الظاهرة للطلاب
-let view='home',adminTab='dash',menuOpen=false,authTab='login';
+let view='home',adminTab='dash',menuOpen=false,authTab='login',library=[],libQ='';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
@@ -241,6 +252,8 @@ function errMsg(e){const m=(e&&e.message)||String(e);
 /* ---------- loaders ---------- */
 async function loadTeacher(){const {data}=await sb.from('profiles').select('display_name,avatar,avatar_url').eq('role','admin').limit(1);
   if(data&&data[0])admin={display:data[0].display_name||'Miss Amal',avatar:data[0].avatar||'👩‍🏫',avatarImg:data[0].avatar_url||''}}
+const mapL=r=>({id:r.id,title:r.title,kind:'file',fileKey:r.file_path,mime:r.mime,fname:r.fname,size:r.size,created:r.created_at?new Date(r.created_at).getTime():0});
+async function loadLibrary(){const {data,error}=await sb.from('library').select('*').order('created_at',{ascending:false});if(!error)library=(data||[]).map(mapL)}
 async function loadContent(){const {data,error}=await sb.from('content').select('*').order('created_at',{ascending:false});if(!error)videos=(data||[]).map(mapV)}
 async function loadMyProgress(){const {data}=await sb.from('progress').select('*').eq('user_id',me.id);
   prog[me.id]={};(data||[]).forEach(r=>{prog[me.id][r.content_id]=mapP(r)})}
@@ -429,13 +442,13 @@ async function boot(){
     if(p.blocked){await sb.auth.signOut();me=null;authMsg='الحساب ده موقوف، كلّم المدرسة';ready=true;return render()}
     prof=mapU(p);me={id:p.id,admin:p.role==='admin'};
     await loadTeacher();
-    if(me.admin){adminTab='dash';await Promise.all([loadContent(),loadAdminData()])}
-    else{view='home';await Promise.all([loadContent(),loadMyProgress()]);sb.rpc('start_session').then(()=>{},()=>{});startTimers();checkPush()}
+    if(me.admin){adminTab='dash';await Promise.all([loadContent(),loadLibrary(),loadAdminData()])}
+    else{view='home';await Promise.all([loadContent(),loadLibrary(),loadMyProgress()]);sb.rpc('start_session').then(()=>{},()=>{});startTimers();checkPush()}
   }catch(e){authMsg=errMsg(e)}
   ready=true;render();
 }
-async function go(v){await flushProg();if(v!=='profile')await Promise.all([loadContent(),loadMyProgress()]);view=v;menuOpen=false;render()}
-async function goA(t){adminTab=t;menuOpen=false;if(t!=='profile')await Promise.all([loadContent(),loadAdminData()]);render()}
+async function go(v){await flushProg();if(v==='library')await loadLibrary();else if(v!=='profile')await Promise.all([loadContent(),loadMyProgress()]);view=v;menuOpen=false;render()}
+async function goA(t){adminTab=t;menuOpen=false;if(t==='library')await loadLibrary();else if(t!=='profile')await Promise.all([loadContent(),loadAdminData()]);render()}
 
 /* ---------- progress tracking ---------- */
 let ytTimers=[];const pend={};
@@ -552,16 +565,18 @@ function studentShell(u){
   let body='';
   if(view==='home'||view==='videos'){
     body=`${profileHead(u)}<h3 style="margin-bottom:12px">فيديوهات ${GP[u.group]} - ${GR[u.grade]}</h3>${progSummary(u,mine)}${vidCards(mine,true)}`;
+  }else if(view==='library'){
+    body=libraryView();
   }else if(view==='profile'){
     body=`${profileHead(u)}${profileEditor(u)}`;
   }
   return `<div class="layout"><div class="side ${menuOpen?'open':''}">
     <div class="title" style="font-size:18px;margin:6px 0 14px">Miss Amal Biology</div>
-    ${nav('home','🏠 الرئيسية')}${nav('videos','🎬 فيديوهات مجموعتي')}${nav('profile','👤 البروفايل')}
+    ${nav('home','🏠 الرئيسية')}${nav('videos','🎬 فيديوهات مجموعتي')}${nav('library','📚 المكتبة')}${nav('profile','👤 البروفايل')}
     <h4>مرحلتي</h4><a class="on">${GR[u.grade]}</a>
     <h4>مجموعتي</h4><a class="on">${GP[u.group]}</a>
     <h4>&nbsp;</h4><a onclick="logout()" style="color:var(--danger)">🚪 تسجيل خروج</a>
-  </div><div class="main"><button class="menuBtn" onclick="menuOpen=!menuOpen;render()">☰ القائمة</button>${teacherCard()}<div id="pwaSlot">${pwaInner()}</div>${body}</div></div>`;
+  </div><div class="main"><button class="menuBtn" onclick="menuOpen=!menuOpen;render()">☰ القائمة</button>${libBtn(view==='library',"go('library')",library.length)}${teacherCard()}<div id="pwaSlot">${pwaInner()}</div>${body}</div></div>`;
 }
 function teacherCard(){
   const av=admin.avatarImg?`<img src="${esc(admin.avatarImg)}">`:admin.avatar;
@@ -589,25 +604,133 @@ async function updateSelf(patch){
 }
 async function setAvatar(a){try{await updateSelf({avatar:a,avatar_url:null})}catch(e){alert(errMsg(e))}}
 async function setBanner(b){try{await updateSelf({banner_type:'preset',banner_val:b})}catch(e){alert(errMsg(e))}}
+
+/* ---------- Library (المكتبة) ---------- */
+const libBtn=(on,fn,n)=>`<button class="libBtn ${on?'on':''}" onclick="${fn}">📚 المكتبة<small>${n} ملف</small></button>`;
+function szTxt(b){return b?(b>1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1024))+' KB'):''}
+function libList(admin){
+  const qq=libQ.trim().toLowerCase(),list=library.filter(v=>!qq||v.title.toLowerCase().includes(qq)||(v.fname||'').toLowerCase().includes(qq));
+  if(!library.length)return '<div class="empty">المكتبة فاضية لسه 📭</div>';
+  if(!list.length)return '<div class="empty">مفيش نتائج للبحث 🔍</div>';
+  return `<div class="grid">${list.map(v=>`<div class="vid"><div class="v">${media(v,false)}</div><div class="t">${esc(v.title)}
+    <div>${(v.mime||'').startsWith('image/')?'<span class="tag">🖼️ صورة</span>':'<span class="tag">📄 PDF</span>'}${v.size?`<span class="tag">${szTxt(v.size)}</span>`:''}${v.created&&Date.now()-v.created<3*864e5?'<span class="tag st-new">🆕 جديد</span>':''}</div>
+    ${admin?`<div class="row" style="margin-top:8px"><button class="btn ghost sm" onclick="editLib('${v.id}')">✏️ تعديل</button><button class="btn red sm" onclick="delLib('${v.id}')">🗑 حذف</button></div>`:''}</div></div>`).join('')}</div>`;
+}
+function libSearch(adm){return `<input placeholder="🔍 ابحث في المكتبة..." value="${esc(libQ)}" oninput="libQ=this.value;$('liblist').innerHTML=libList(${adm});hydrate()" style="margin-bottom:14px">`}
+function libraryView(){return `<h3 style="margin-bottom:6px">📚 المكتبة</h3><div style="color:var(--mut);font-size:13px;margin-bottom:14px">ملفات PDF وصور متاحة لكل الطلاب في كل المجموعات</div>${libSearch(false)}<div id="liblist">${libList(false)}</div>`}
+function libraryAdminView(){return `<h3 style="margin-bottom:6px">📚 المكتبة</h3><div style="color:var(--mut);font-size:13px;margin-bottom:14px">اللي بترفعه هنا بيظهر لكل الطلاب في كل المجموعات والمراحل</div>
+  <div class="card"><b>➕ رفع ملفات جديدة</b>
+  <label>العنوان (اختياري - لو رفعت أكتر من ملف بياخد كل ملف اسمه)</label><input id="lt" placeholder="مثال: ملخص الوراثة">
+  <label>اختار PDF أو صور (من الملفات أو معرض الموبايل)</label><input id="lf" type="file" multiple accept="application/pdf,image/*">
+  <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin:12px 0;color:var(--tx);font-size:14px"><input type="checkbox" id="lnotify" checked style="width:20px;height:20px;margin:0;accent-color:#e6bb58"> 🔔 ابعت إشعار للطلاب</label>
+  <button class="btn" id="laddbtn" onclick="addLib()">رفع للمكتبة</button><div id="lmsg" style="color:var(--mut);font-size:13px;margin-top:8px"></div></div>
+  <div style="margin-top:16px">${libSearch(true)}<div id="liblist">${libList(true)}</div></div>`}
+async function addLib(){
+  const fs=[...($('lf').files||[])],t=$('lt').value.trim();
+  if(!fs.length)return alert('اختار ملف PDF أو صورة');
+  for(const f of fs){
+    if(!(f.type==='application/pdf'||f.type.startsWith('image/')))return alert('المسموح PDF أو صور بس: '+f.name);
+    if(f.size>MAX_FILE)return alert('الملف أكبر من 50MB: '+f.name);
+  }
+  const btn=$('laddbtn'),msg=$('lmsg');btn.disabled=true;let ok=0,lastTitle='';
+  for(let i=0;i<fs.length;i++){
+    const f=fs[i];let path=null;
+    try{
+      msg.textContent=`جاري رفع ${i+1} من ${fs.length}...`;
+      const ext=(f.name.split('.').pop()||'bin').replace(/[^a-z0-9]/gi,'').slice(0,8)||'bin';
+      path=`lib/${crypto.randomUUID()}/${crypto.randomUUID().slice(0,8)}.${ext}`;
+      const {error}=await sb.storage.from('content').upload(path,f,{contentType:f.type||'application/octet-stream'});if(error)throw error;
+      const title=(fs.length===1&&t)?t:f.name.replace(/\.[^.]+$/,'');
+      const {error:e2}=await sb.from('library').insert({title,file_path:path,mime:f.type,fname:f.name,size:f.size});if(e2)throw e2;
+      ok++;lastTitle=title;
+    }catch(e){if(path)sb.storage.from('content').remove([path]);alert(`فشل رفع "${f.name}": `+errMsg(e))}
+  }
+  const wantN=$('lnotify')&&$('lnotify').checked;
+  await loadLibrary();render();
+  if(ok&&wantN){
+    try{const r=await callAdmin({action:'notify_library',title:lastTitle,count:ok});
+      alert(r.devices?`تم الرفع ✅\nوصل الإشعار لـ ${r.sent} جهاز`:`تم الرفع ✅\nمفيش طالب مفعّل الإشعارات لسه.`)}
+    catch(e){alert('تم الرفع ✅ لكن الإشعار ما اتبعتش: '+errMsg(e))}
+  }
+}
+function editLib(id){const v=library.find(x=>x.id===id);
+  showModal(`<h3 style="margin-bottom:12px">تعديل العنوان</h3><input id="elt" value="${esc(v.title)}"><div class="row"><button class="btn" onclick="saveLib('${id}')">حفظ</button><button class="btn ghost" onclick="closeModal()">إلغاء</button></div>`)}
+async function saveLib(id){const t=$('elt').value.trim();if(!t)return alert('اكتب العنوان');
+  const {error}=await sb.from('library').update({title:t}).eq('id',id);if(error)return alert(errMsg(error));
+  closeModal();await loadLibrary();render()}
+async function delLib(id){const v=library.find(x=>x.id===id);if(!confirm('حذف "'+v.title+'" من المكتبة؟'))return;
+  const {error}=await sb.from('library').delete().eq('id',id);if(error)return alert(errMsg(error));
+  sb.storage.from('content').remove([v.fileKey]);await loadLibrary();render()}
+
+/* ---------- Image cropper (تحريك / تكبير / تصغير / تدوير) ---------- */
+function openCropper(file,kind){return new Promise((resolve,reject)=>{
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('تعذر قراءة الصورة'))};
+  img.onload=()=>{
+    URL.revokeObjectURL(url);
+    const k=Math.min(1,2400/Math.max(img.width,img.height)),src=document.createElement('canvas');
+    src.width=Math.round(img.width*k);src.height=Math.round(img.height*k);src.getContext('2d').drawImage(img,0,0,src.width,src.height);
+    const round=kind==='avatar',ar=round?1:3,VW=Math.min(round?300:340,innerWidth-80),VH=Math.round(VW/ar),OW=round?500:1200,OH=Math.round(OW/ar);
+    let rot=0,z=1,ox=0,oy=0;
+    const dims=()=>rot%2?[src.height,src.width]:[src.width,src.height];
+    const cover=()=>{const [w,h]=dims();return Math.max(VW/w,VH/h)};
+    const contain=()=>{const [w,h]=dims();return Math.min(VW/w,VH/h)};
+    const zmin=()=>Math.min(1,contain()/cover()),ZMAX=5;
+    const clamp=()=>{z=Math.max(zmin(),Math.min(ZMAX,z));const [w,h]=dims(),sc=cover()*z,mx=Math.max(0,(w*sc-VW)/2),my=Math.max(0,(h*sc-VH)/2);ox=Math.max(-mx,Math.min(mx,ox));oy=Math.max(-my,Math.min(my,oy))};
+    const paint=(cv,W,H)=>{const x=cv.getContext('2d'),f=W/VW;x.fillStyle='#0b1f1a';x.fillRect(0,0,W,H);x.save();x.translate(W/2+ox*f,H/2+oy*f);x.rotate(rot*Math.PI/2);const sc=cover()*z*f;x.scale(sc,sc);x.imageSmoothingQuality='high';x.drawImage(src,-src.width/2,-src.height/2);x.restore()};
+    const root=$('mroot');
+    root.innerHTML=`<div class="mback"><div class="mbox"><h3 style="margin-bottom:4px">${round?'اظبط صورتك':'اظبط الغلاف'}</h3><div style="color:var(--mut);font-size:12px;margin-bottom:12px">اسحب الصورة لتحريكها • الشريط أو الإصبعين للتكبير والتصغير</div>
+    <div class="crop-vp" id="cvp" style="width:${VW}px;height:${VH}px"><canvas id="ccv" width="${VW*2}" height="${VH*2}"></canvas><div class="crop-ov ${round?'round':'rect'}"></div></div>
+    <div class="crop-ctl"><button class="btn ghost sm" id="czo">➖</button><input type="range" id="czr" min="0" max="1000" value="0"><button class="btn ghost sm" id="czi">➕</button></div>
+    <div class="crop-ctl" style="margin-top:6px"><button class="btn ghost sm" id="crt">⟳ تدوير</button><button class="btn ghost sm" id="crs">↺ إعادة ضبط</button></div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="csv">✅ حفظ</button><button class="btn ghost" id="ccn">إلغاء</button></div></div></div>`;
+    const vp=$('cvp'),cv=$('ccv'),rg=$('czr');
+    const sync=()=>{clamp();paint(cv,VW*2,VH*2);const lo=Math.log(zmin()),hi=Math.log(ZMAX);rg.value=hi>lo?Math.round((Math.log(z)-lo)/(hi-lo)*1000):0};
+    const setZ=nz=>{z=nz;sync()};
+    rg.oninput=()=>{const lo=Math.log(zmin()),hi=Math.log(ZMAX);z=Math.exp(lo+(hi-lo)*rg.value/1000);clamp();paint(cv,VW*2,VH*2)};
+    $('czi').onclick=()=>setZ(z*1.2);$('czo').onclick=()=>setZ(z/1.2);
+    $('crt').onclick=()=>{rot=(rot+1)%4;z=1;ox=oy=0;sync()};
+    $('crs').onclick=()=>{rot=0;z=1;ox=oy=0;sync()};
+    vp.addEventListener('wheel',e=>{e.preventDefault();setZ(z*(e.deltaY<0?1.1:1/1.1))},{passive:false});
+    const pts=new Map();let pd=0;
+    vp.addEventListener('pointerdown',e=>{vp.setPointerCapture(e.pointerId);pts.set(e.pointerId,[e.clientX,e.clientY]);if(pts.size===2){const [a,b]=[...pts.values()];pd=Math.hypot(a[0]-b[0],a[1]-b[1])}vp.style.cursor='grabbing'});
+    vp.addEventListener('pointermove',e=>{
+      if(!pts.has(e.pointerId))return;const o=pts.get(e.pointerId);
+      if(pts.size===1){ox+=e.clientX-o[0];oy+=e.clientY-o[1];pts.set(e.pointerId,[e.clientX,e.clientY]);sync()}
+      else{pts.set(e.pointerId,[e.clientX,e.clientY]);const [a,b]=[...pts.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pd>0)z*=d/pd;pd=d;sync()}});
+    const up=e=>{pts.delete(e.pointerId);pd=0;vp.style.cursor='grab'};
+    vp.addEventListener('pointerup',up);vp.addEventListener('pointercancel',up);
+    sync();
+    $('ccn').onclick=()=>{root.innerHTML='';resolve(null)};
+    $('csv').onclick=()=>{const out=document.createElement('canvas');out.width=OW;out.height=OH;paint(out,OW,OH);
+      out.toBlob(b=>{root.innerHTML='';b?resolve(b):reject(new Error('تعذر معالجة الصورة'))},'image/jpeg',.88)};
+  };
+  img.src=url})}
 async function upImg(inp,kind){
   const f=inp.files[0];if(!f)return;
   const msg=t=>{const m=$('upmsg');if(m)m.textContent=t};
   try{
-    msg('جاري الرفع...');
     if(kind==='avatar'){
-      const url=await putPublic(`${me.id}/avatar.jpg`,await resizeBlob(f,400),'image/jpeg');
+      if(!f.type.startsWith('image/')){inp.value='';return alert('اختار صورة')}
+      const blob=await openCropper(f,'avatar');inp.value='';if(!blob)return;
+      msg('جاري الرفع...');
+      const url=await putPublic(`${me.id}/avatar.jpg`,blob,'image/jpeg');
       await updateSelf({avatar_url:url});
     }else if(f.type.startsWith('video/')){
+      msg('جاري الرفع...');
       if(f.size>30e6){inp.value='';msg('');return alert('الفيديو كبير، اختار فيديو أقل من 30MB')}
       const ext=(f.name.split('.').pop()||'mp4').replace(/[^a-z0-9]/gi,'').slice(0,5)||'mp4';
       const url=await putPublic(`${me.id}/banner_video.${ext}`,f,f.type||'video/mp4');
       await updateSelf({banner_type:'video',banner_val:url});
     }else if(f.type==='image/gif'){
+      msg('جاري الرفع...');
       if(f.size>5e6){inp.value='';msg('');return alert('الـ GIF كبير، اختار أقل من 5MB')}
       const url=await putPublic(`${me.id}/banner.gif`,f,'image/gif');
       await updateSelf({banner_type:'img',banner_val:url});
     }else{
-      const url=await putPublic(`${me.id}/banner.jpg`,await resizeBlob(f,1200),'image/jpeg');
+      const blob=await openCropper(f,'banner');inp.value='';if(!blob)return;
+      msg('جاري الرفع...');
+      const url=await putPublic(`${me.id}/banner.jpg`,blob,'image/jpeg');
       await updateSelf({banner_type:'img',banner_val:url});
     }
   }catch(e){msg('');alert('حصلت مشكلة في الرفع: '+errMsg(e))}
@@ -636,13 +759,13 @@ async function callAdmin(body){
 }
 function adminShell(){
   const nav=(k,l)=>`<a class="${adminTab===k?'on':''}" onclick="goA('${k}')">${l}</a>`;
-  const body=adminTab==='dash'?dashView():adminTab==='students'?studentsView():adminTab==='videos'?videosView():adminTab==='track'?trackView():adminProfileView();
+  const body=adminTab==='dash'?dashView():adminTab==='students'?studentsView():adminTab==='videos'?videosView():adminTab==='track'?trackView():adminTab==='library'?libraryAdminView():adminProfileView();
   return `<div class="layout"><div class="side ${menuOpen?'open':''}">
     <div style="text-align:center;margin-bottom:12px"><div class="avatar" style="position:static;margin:0 auto 8px;width:72px;height:72px;font-size:36px">${aav()}</div><b>${esc(admin.display||prof.name)}</b><div style="color:var(--mut);font-size:12px">الأدمن</div></div>
-    ${nav('dash','📊 لوحة التحكم')}${nav('students','👥 الطلاب')}${nav('track','📈 متابعة الطلاب')}${nav('videos','🎬 الفيديوهات والملفات')}${nav('profile','⚙️ حسابي وكلمة المرور')}
+    ${nav('dash','📊 لوحة التحكم')}${nav('students','👥 الطلاب')}${nav('track','📈 متابعة الطلاب')}${nav('videos','🎬 الفيديوهات والملفات')}${nav('library','📚 المكتبة')}${nav('profile','⚙️ حسابي وكلمة المرور')}
     <a onclick="goA(adminTab)">🔄 تحديث البيانات</a>
     <h4>&nbsp;</h4><a onclick="logout()" style="color:var(--danger)">🚪 تسجيل خروج</a>
-  </div><div class="main"><button class="menuBtn" onclick="menuOpen=!menuOpen;render()">☰ القائمة</button><div id="pwaSlot">${pwaInner()}</div>${body}</div></div>`;
+  </div><div class="main"><button class="menuBtn" onclick="menuOpen=!menuOpen;render()">☰ القائمة</button>${libBtn(adminTab==='library',"goA('library')",library.length)}<div id="pwaSlot">${pwaInner()}</div>${body}</div></div>`;
 }
 
 /* --- dashboard --- */
