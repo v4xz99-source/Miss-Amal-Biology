@@ -576,7 +576,7 @@ function studentShell(u){
     <h4>مرحلتي</h4><a class="on">${GR[u.grade]}</a>
     <h4>مجموعتي</h4><a class="on">${GP[u.group]}</a>
     <h4>&nbsp;</h4><a onclick="logout()" style="color:var(--danger)">🚪 تسجيل خروج</a>
-  </div><div class="main"><button class="menuBtn" onclick="menuOpen=!menuOpen;render()">☰ القائمة</button>${libBtn(view==='library',"go('library')",library.length)}${teacherCard()}<div id="pwaSlot">${pwaInner()}</div>${body}</div></div>`;
+  </div><div class="main"><button class="menuBtn" onclick="menuOpen=!menuOpen;render()">☰ القائمة</button>${view==='home'?libBtn(false,"go('library')",library.length):''}${teacherCard()}<div id="pwaSlot">${pwaInner()}</div>${body}</div></div>`;
 }
 function teacherCard(){
   const av=admin.avatarImg?`<img src="${esc(admin.avatarImg)}">`:admin.avatar;
