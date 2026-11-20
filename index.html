@@ -762,10 +762,10 @@ function adminShell(){
   const body=adminTab==='dash'?dashView():adminTab==='students'?studentsView():adminTab==='videos'?videosView():adminTab==='track'?trackView():adminTab==='library'?libraryAdminView():adminProfileView();
   return `<div class="layout"><div class="side ${menuOpen?'open':''}">
     <div style="text-align:center;margin-bottom:12px"><div class="avatar" style="position:static;margin:0 auto 8px;width:72px;height:72px;font-size:36px">${aav()}</div><b>${esc(admin.display||prof.name)}</b><div style="color:var(--mut);font-size:12px">الأدمن</div></div>
-    ${nav('dash','📊 لوحة التحكم')}${nav('students','👥 الطلاب')}${nav('track','📈 متابعة الطلاب')}${nav('videos','🎬 الفيديوهات والملفات')}${nav('library','📚 المكتبة')}${nav('profile','⚙️ حسابي وكلمة المرور')}
+    ${nav('dash','📊 لوحة التحكم')}${nav('students','👥 الطلاب')}${nav('track','📈 متابعة الطلاب')}${nav('videos','🎬 الفيديوهات والملفات')}${nav('profile','⚙️ حسابي وكلمة المرور')}${nav('library','📚 المكتبة (رفع PDF / صور)')}
     <a onclick="goA(adminTab)">🔄 تحديث البيانات</a>
     <h4>&nbsp;</h4><a onclick="logout()" style="color:var(--danger)">🚪 تسجيل خروج</a>
-  </div><div class="main"><button class="menuBtn" onclick="menuOpen=!menuOpen;render()">☰ القائمة</button>${libBtn(adminTab==='library',"goA('library')",library.length)}<div id="pwaSlot">${pwaInner()}</div>${body}</div></div>`;
+  </div><div class="main"><button class="menuBtn" onclick="menuOpen=!menuOpen;render()">☰ القائمة</button><div id="pwaSlot">${pwaInner()}</div>${body}</div></div>`;
 }
 
 /* --- dashboard --- */
